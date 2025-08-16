@@ -182,9 +182,3 @@ secure_compress () {
     echo "✅ Done: $tmp_encrypted"
 }
 ```
-
----
-
-## 🗨️ Questions?
-
-Ask the machine. It remembers everything
