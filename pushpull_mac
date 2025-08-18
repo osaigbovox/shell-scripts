@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# pushpull_mac — Push/Pull between Mac and Termux via scp
+
+set -euo pipefail
+
+# Usage helper
+usage() {
+  cat <<EOF
+Usage: pushpull_mac <push|pull> <termux|termux2> <source> [destination]
+
+Modes:
+  push   Send local Mac <source> to Termux
+  pull   Fetch remote <source> from Termux to Mac
+
+Hosts:
+  termux   → first Termux host (alias in ~/.ssh/config)
+  termux2  → second Termux host
+
+<source>:
+  push   → Mac path (e.g. ~/Documents/report.pdf)
+  pull   → Termux path (e.g. storage/downloads/my-folder)
+
+[destination] (optional):
+  push   → remote Termux destination (default: storage/downloads/)
+  pull   → local Mac destination (default: current directory)
+
+Examples:
+  # Pull folder from Termux to Mac:
+  pushpull_mac pull termux storage/downloads/photos ~/Pictures/Android
+
+  # Push file from Mac to Termux2:
+  pushpull_mac push termux2 ~/Downloads/report.pdf storage/downloads/
+EOF
+  exit 1
+}
+
+# Minimum args check
+if (( $# < 3 )); then
+  usage
+fi
+
+mode="$1";      shift
+host="$1";      shift
+src="$1";       shift
+dest="${1:-}"
+
+# Validate mode
+if [[ "$mode" != "push" && "$mode" != "pull" ]]; then
+  echo "❌ Invalid mode: $mode"; usage
+fi
+
+# Validate host
+if [[ "$host" != "termux" && "$host" != "termux2" ]]; then
+  echo "❌ Invalid host: $host"; usage
+fi
+
+# Set defaults
+if [[ "$mode" == "push" ]]; then
+  # source must exist locally
+  if [[ ! -e "$src" ]]; then
+    echo "❌ Local source not found: $src"; exit 2
+  fi
+  dest="${dest:-storage/downloads/}"
+  echo "📤 Pushing from Mac: $src → $host:$dest"
+  # ensure remote dir
+  ssh "$host" "mkdir -p '$dest'"
+  scp -r -C -p "$src" "$host":"$dest"
+  echo "✅ Push complete."
+else
+  # pull mode
+  dest="${dest:-.}"
+  echo "📥 Pulling from $host:$src → Mac directory: $dest"
+  mkdir -p "$dest"
+  scp -r -C -p "$host":"$src" "$dest"
+  echo "✅ Pull complete."
+fi
+
